@@ -11,7 +11,7 @@ enum class State {kStart,kEmpty, kObstacle, kClosed, kPath,kFinish};
 const int delta[4][2]{{-1, 0}, {0, -1}, {1, 0}, {0, 1}};
 
 
-vector<State> ParseLine(string line) {
+vector<State> ParseLine(string& line) {
     istringstream sline(line);
     int n;
     char c;
@@ -27,7 +27,7 @@ vector<State> ParseLine(string line) {
 }
 
 
-vector<vector<State>> ReadBoardFile(string path) {
+vector<vector<State>> ReadBoardFile(const char* path) {
   ifstream myfile (path);
   vector<vector<State>> board{};
   if (myfile) {
@@ -158,9 +158,9 @@ string CellString(State cell) {
   switch(cell) {
     case State::kObstacle: return "⛰️   ";
     case State::kPath: return "🚗   ";
-    case State::kStart: return "🚦 ";
-    case State::kFinish: return "🏁 ";
-    default: return "0   "; 
+    case State::kStart: return "🚦   ";
+    case State::kFinish: return "🏁   ";
+    default: return "0    "; 
   }
 }
 
