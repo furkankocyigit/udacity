@@ -1,5 +1,7 @@
 #include "route_planner.h"
 #include <algorithm>
+using std::vector;
+using std::sort;
 
 RoutePlanner::RoutePlanner(RouteModel &model, float start_x, float start_y, float end_x, float end_y): m_Model(model) {
     // Convert inputs to percentage:
@@ -11,8 +13,8 @@ RoutePlanner::RoutePlanner(RouteModel &model, float start_x, float start_y, floa
     // TODO 2: Use the m_Model.FindClosestNode method to find the closest nodes to the starting and ending coordinates.
     // Store the nodes you find in the RoutePlanner's start_node and end_node attributes.
     //RouteModel::Node start,end;
-    start_node = &m_Model.FindClosestNode(start_x, start_y);
-    end_node   = &m_Model.FindClosestNode(end_x,end_y);
+    this->start_node = &m_Model.FindClosestNode(start_x, start_y);
+    this->end_node   = &m_Model.FindClosestNode(end_x,end_y);
 
 }
 
@@ -23,7 +25,7 @@ RoutePlanner::RoutePlanner(RouteModel &model, float start_x, float start_y, floa
 // - Node objects have a distance method to determine the distance to another node.
 
 float RoutePlanner::CalculateHValue(RouteModel::Node const *node) {
-    return node->distance(*end_node);
+    return node->distance(*(this->end_node));
 }
 
 
@@ -35,17 +37,24 @@ float RoutePlanner::CalculateHValue(RouteModel::Node const *node) {
 // - For each node in current_node.neighbors, add the neighbor to open_list and set the node's visited attribute to true.
 
 void RoutePlanner::AddNeighbors(RouteModel::Node *current_node) {
+
     current_node->FindNeighbors();
-    for(auto node : current_node->neighbors){
-        node->h_value = CalculateHValue(node);
-        node->g_value = 0.0;
-        node->parent = nullptr;
-        node->visited = true;
-        open_list.push_back(node);
+    for(auto neighbor : current_node->neighbors){
+
+        neighbor->h_value = CalculateHValue(neighbor);
+        neighbor->g_value = current_node->g_value + current_node->distance(*neighbor);
+        neighbor->parent    = current_node;
+        neighbor->visited = true;
+        open_list.push_back(neighbor);
     }
 
 }
-
+bool RoutePlanner::Compare(const RouteModel::Node* a,const RouteModel::Node* b){
+    float f1 = a->g_value + a->h_value; // f1 = g1 + h1
+    float f2 = b->g_value + b->h_value; // f2 = g2 + h2
+    
+    return f1 > f2;
+}
 
 // TODO 5: Complete the NextNode method to sort the open list and return the next node.
 // Tips:
@@ -56,18 +65,10 @@ void RoutePlanner::AddNeighbors(RouteModel::Node *current_node) {
 
 RouteModel::Node *RoutePlanner::NextNode() {
     RouteModel::Node* pt = nullptr;
-    float sum = std::numeric_limits<float>::max();
-    int idx = 0;
-    int i = 0;
-    for(auto node : open_list){
-        if (node->g_value + node->h_value < sum){
-            sum = node->g_value + node->h_value;
-            pt  = node;
-            idx = i;
-        }
-        i++;
-    }
-    open_list.erase(open_list.begin() + idx);
+    
+    sort(open_list.begin(),open_list.end(),Compare);
+    pt = open_list.back();
+    open_list.pop_back();
     return pt;
 
 }
@@ -85,6 +86,17 @@ std::vector<RouteModel::Node> RoutePlanner::ConstructFinalPath(RouteModel::Node 
     // Create path_found vector
     distance = 0.0f;
     std::vector<RouteModel::Node> path_found;
+    RouteModel::Node* templateNode = current_node;
+
+    while(templateNode){
+
+        path_found.push_back(*templateNode);
+        if(templateNode->parent){
+            this->distance += templateNode->distance(*(templateNode->parent));
+        }
+        templateNode = templateNode->parent;        
+    }
+    std::reverse(path_found.begin(),path_found.end());      //reverse the vector
 
     // TODO: Implement your solution here. need to reverse the vector before you return it.
 
@@ -102,13 +114,22 @@ std::vector<RouteModel::Node> RoutePlanner::ConstructFinalPath(RouteModel::Node 
 // - Store the final path in the m_Model.path attribute before the method exits. This path will then be displayed on the map tile.
 
 void RoutePlanner::AStarSearch() {
+    
     RouteModel::Node *current_node = nullptr;
-
+    start_node->visited = true;
+    current_node = start_node;
+    open_list.push_back(current_node);
+    
     // TODO: Implement your solution here.while loop eas long as  the open list is not empty. use all the method above
     while(!open_list.empty()){
+        
+        current_node = NextNode();
 
-
-
+        if(current_node == end_node){
+            m_Model.path = ConstructFinalPath(current_node);
+        }else{
+            AddNeighbors(current_node);
+        }
     }
-
 }
+
